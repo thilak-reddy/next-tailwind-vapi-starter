@@ -4,6 +4,8 @@ import Vapi from "@vapi-ai/web";
 const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || ""; // Replace with your actual public key
 const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || ""; // Replace with your actual assistant ID
 
+console.log("Vapi Config:", { publicKey: publicKey ? "Set" : "Not Set", assistantId: assistantId ? "Set" : "Not Set" });
+
 const useVapi = () => {
   const [volumeLevel, setVolumeLevel] = useState(0);
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -14,24 +16,39 @@ const useVapi = () => {
   const vapiRef = useRef<any>(null);
 
   const initializeVapi = useCallback(() => {
+    console.log("Initializing Vapi...");
     if (!vapiRef.current) {
+      if (!publicKey) {
+        console.error("Vapi public key is not set!");
+        return;
+      }
+      if (!assistantId) {
+        console.error("Vapi assistant ID is not set!");
+        return;
+      }
+      
       const vapiInstance = new Vapi(publicKey);
       vapiRef.current = vapiInstance;
+      console.log("Vapi instance created");
 
       vapiInstance.on("call-start", () => {
+        console.log("Call started");
         setIsSessionActive(true);
       });
 
       vapiInstance.on("call-end", () => {
+        console.log("Call ended");
         setIsSessionActive(false);
         setConversation([]); // Reset conversation on call end
       });
 
       vapiInstance.on("volume-level", (volume: number) => {
+        console.log("Volume level:", volume);
         setVolumeLevel(volume);
       });
 
       vapiInstance.on("message", (message: any) => {
+        console.log("Received message:", message);
         if (message.type === "transcript") {
           setConversation((prev) => {
             const timestamp = new Date().toLocaleTimeString();
@@ -84,8 +101,7 @@ const useVapi = () => {
           message.functionCall.name === "changeUrl"
         ) {
           const command = message.functionCall.parameters.url.toLowerCase();
-          console.log(command);
-          // const newUrl = routes[command];
+          console.log("Function call - changeUrl:", command);
           if (command) {
             window.location.href = command;
           } else {
@@ -113,6 +129,7 @@ const useVapi = () => {
   }, [initializeVapi]);
 
   const toggleCall = async () => {
+    console.log("Toggling call, current state:", isSessionActive);
     try {
       if (isSessionActive) {
         await vapiRef.current.stop();

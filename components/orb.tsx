@@ -20,18 +20,21 @@ const Orb: React.FC = () => {
     window.addEventListener("resize", onWindowResize);
     return () => {
       window.removeEventListener("resize", onWindowResize);
+      // Cleanup Three.js resources
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+      if (sceneRef.current) {
+        sceneRef.current.clear();
+      }
     };
   }, []);
 
   useEffect(() => {
     if (isSessionActive && ballRef.current) {
-      console.log("Session is active, morphing the ball");
+      console.log("Session is active, morphing the ball with volume:", volumeLevel);
       updateBallMorph(ballRef.current, volumeLevel);
-    } else if (
-      !isSessionActive &&
-      ballRef.current &&
-      originalPositionsRef.current
-    ) {
+    } else if (!isSessionActive && ballRef.current && originalPositionsRef.current) {
       console.log("Session ended, resetting the ball");
       resetBallMorph(ballRef.current, originalPositionsRef.current);
     }
@@ -70,8 +73,7 @@ const Orb: React.FC = () => {
     ballRef.current = ball;
 
     // Store the original positions of the vertices
-    originalPositionsRef.current =
-      ball.geometry.attributes.position.array.slice();
+    originalPositionsRef.current = ball.geometry.attributes.position.array.slice();
 
     group.add(ball);
 
@@ -118,18 +120,15 @@ const Orb: React.FC = () => {
 
     const outElement = document.getElementById("out");
     if (outElement) {
-      cameraRef.current.aspect =
-        outElement.clientWidth / outElement.clientHeight;
+      cameraRef.current.aspect = outElement.clientWidth / outElement.clientHeight;
       cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(
-        outElement.clientWidth,
-        outElement.clientHeight,
-      );
+      rendererRef.current.setSize(outElement.clientWidth, outElement.clientHeight);
     }
   };
 
   const updateBallMorph = (mesh: THREE.Mesh, volume: number) => {
-    console.log("Morphing the ball with volume:", volume);
+    if (!volume) return; // Don't morph if there's no volume
+    
     const geometry = mesh.geometry as THREE.BufferGeometry;
     const positionAttribute = geometry.getAttribute("position");
 
@@ -164,11 +163,7 @@ const Orb: React.FC = () => {
     geometry.computeVertexNormals();
   };
 
-  const resetBallMorph = (
-    mesh: THREE.Mesh,
-    originalPositions: Float32Array,
-  ) => {
-    console.log("Resetting the ball to its original shape");
+  const resetBallMorph = (mesh: THREE.Mesh, originalPositions: Float32Array) => {
     const geometry = mesh.geometry as THREE.BufferGeometry;
     const positionAttribute = geometry.getAttribute("position");
 
